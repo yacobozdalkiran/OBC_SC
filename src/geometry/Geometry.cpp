@@ -1,6 +1,7 @@
 #include "Geometry.h"
 
 #include <cstdint>
+#include <print>
 
 Geometry::Geometry(int T_, int L_) {
     T = T_;
@@ -30,6 +31,7 @@ Geometry::Geometry(int T_, int L_) {
         }
     }
 
+
     links_staples.resize(V * 4 * 6 * 3, std::make_pair(SIZE_MAX, -1));
     // 4 links per site, 6 staples per link, 3 links per staple
     for (int t = 0; t < T; t++) {
@@ -48,7 +50,7 @@ Geometry::Geometry(int T_, int L_) {
                             size_t xmunu = get_neigh(xmu, nu, down);  // x+mu-nu
                             size_t xmnu = get_neigh(site, nu, down);  // x-nu
                             // We fill only the valid staples (ie not containing a link fixed to Id)
-                            if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
+                            if (not(t == T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
                                 links_staples[index_staples(site, mu, j, 0)] = {xmu, nu};
                                 links_staples[index_staples(site, mu, j, 1)] = {xnu, mu};
                                 links_staples[index_staples(site, mu, j, 2)] = {site, nu};
@@ -67,6 +69,7 @@ Geometry::Geometry(int T_, int L_) {
         }
     }
 
+
     staple_valid.resize(V * 4 * 6, false);
     // 4 links per site, 6 staples per link
     for (int t = 0; t < T; t++) {
@@ -80,7 +83,7 @@ Geometry::Geometry(int T_, int L_) {
                             if (nu == mu) continue;
                             if (mu == 3 and t == T - 1) continue;
                             // We mark the valid staples (ie not containing a link fixed to Id)
-                            if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
+                            if (not(t == T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
                                 staple_valid[index_staple_valid(site, mu, j)] = true;
                             }
 
@@ -94,6 +97,7 @@ Geometry::Geometry(int T_, int L_) {
             }
         }
     }
+
 
     staple_coeff.resize(V * 4 * 6, 0);
     // 4 links per site, 6 staples per link
@@ -109,7 +113,7 @@ Geometry::Geometry(int T_, int L_) {
                             if (mu == 3 and t == T - 1) continue;
                             // We mark the valid staples (ie not containing a link fixed to Id)
                             // Forward staple
-                            if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
+                            if (not(t == T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
                                 //Spatial plaquette of a border spatial link
                                 if ((t == T - 1 and mu != 3 and nu !=3) or (t==0 and mu !=3 and nu != 3))
                                     staple_coeff[index_staple_valid(site, mu, j)] = 0.5;
@@ -131,4 +135,5 @@ Geometry::Geometry(int T_, int L_) {
             }
         }
     }
+
 }

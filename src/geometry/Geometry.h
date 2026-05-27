@@ -37,7 +37,7 @@ public:
 
     // Index of a staple in staple_valid
     [[nodiscard]] static size_t index_staple_valid(size_t site, int mu, int i_staple) {
-        return site * 3 * 6 * 4 + mu * 3 * 6 + i_staple;
+        return site * 24 + mu * 6 + i_staple;
     }
 
     // Get a neighbor

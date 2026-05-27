@@ -13,5 +13,6 @@ add_executable(test_gauge_geo src/bin/test_gauge_geo.cpp
     src/geometry/Geometry.cpp
     src/geometry/types.h
     src/su3/utils.cpp
+    src/observables/observables.cpp
 )
 target_link_libraries(test_gauge_geo PRIVATE Eigen3::Eigen)
