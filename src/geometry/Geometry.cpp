@@ -47,7 +47,7 @@ Geometry::Geometry(int T_, int L_) {
                             size_t xnu = get_neigh(site, nu, up);     // x+nu
                             size_t xmunu = get_neigh(xmu, nu, down);  // x+mu-nu
                             size_t xmnu = get_neigh(site, nu, down);  // x-nu
-                            //We fill only the valid staples (ie not containing a link fixed to Id)
+                            // We fill only the valid staples (ie not containing a link fixed to Id)
                             if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
                                 links_staples[index_staples(site, mu, j, 0)] = {xmu, nu};
                                 links_staples[index_staples(site, mu, j, 1)] = {xnu, mu};
@@ -67,7 +67,6 @@ Geometry::Geometry(int T_, int L_) {
         }
     }
 
-
     staple_valid.resize(V * 4 * 6, false);
     // 4 links per site, 6 staples per link
     for (int t = 0; t < T; t++) {
@@ -80,13 +79,50 @@ Geometry::Geometry(int T_, int L_) {
                         for (int nu = 0; nu < 4; nu++) {
                             if (nu == mu) continue;
                             if (mu == 3 and t == T - 1) continue;
-                            //We mark the valid staples (ie not containing a link fixed to Id)
+                            // We mark the valid staples (ie not containing a link fixed to Id)
                             if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
                                 staple_valid[index_staple_valid(site, mu, j)] = true;
                             }
 
                             if (not(t == 0 and nu == 0) and not(t == T - 1 and mu == 3)) {
-                                staple_valid[index_staple_valid(site, mu, j+1)] = true;
+                                staple_valid[index_staple_valid(site, mu, j + 1)] = true;
+                            }
+                            j += 2;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    staple_coeff.resize(V * 4 * 6, 0);
+    // 4 links per site, 6 staples per link
+    for (int t = 0; t < T; t++) {
+        for (int z = 0; z < L; z++) {
+            for (int y = 0; y < L; y++) {
+                for (int x = 0; x < L; x++) {
+                    size_t site = index(x, y, z, t);  // x
+                    for (int mu = 0; mu < 4; mu++) {
+                        int j = 0;
+                        for (int nu = 0; nu < 4; nu++) {
+                            if (nu == mu) continue;
+                            if (mu == 3 and t == T - 1) continue;
+                            // We mark the valid staples (ie not containing a link fixed to Id)
+                            // Forward staple
+                            if (not(t = T - 1 and mu == 3) and not(t == T - 1 and nu == 3)) {
+                                //Spatial plaquette of a border spatial link
+                                if ((t == T - 1 and mu != 3 and nu !=3) or (t==0 and mu !=3 and nu != 3))
+                                    staple_coeff[index_staple_valid(site, mu, j)] = 0.5;
+                                else
+                                    staple_coeff[index_staple_valid(site, mu, j)] = 1.0;
+                            }
+                            // Backward staple
+                            if (not(t == 0 and nu == 0) and not(t == T - 1 and mu == 3)) {
+                                //Spatial plaquette of a border spatial link
+                                if ((t == T - 1 and mu != 3 and nu !=3) or (t==0 and mu !=3 and nu != 3))
+                                    staple_coeff[index_staple_valid(site, mu, j+1)] = 0.5;
+                                else
+                                    staple_coeff[index_staple_valid(site, mu, j+1)] = 1.0;
                             }
                             j += 2;
                         }

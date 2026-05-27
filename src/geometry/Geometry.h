@@ -15,6 +15,7 @@ private:
     std::vector<size_t> neighbors;
     std::vector<std::pair<size_t, int>> links_staples;
     std::vector<bool> staple_valid;
+    std::vector<double> staple_coeff;
 
 public:
     explicit Geometry(int T_, int L_);
@@ -50,8 +51,14 @@ public:
         return links_staples[index_staples(site, mu, i_staple, i_link)];
     }
 
+    //Returns true if the staple i_staple of link site,mu is valid in OBC
     [[nodiscard]] bool is_staple_valid(size_t site, int mu, int i_staple) const {
         return staple_valid[index_staple_valid(site, mu, i_staple)];
+    }
+
+    //Return the normalization coefficient of the staple i_staple of link site,mu and 0 if invalid staple
+    [[nodiscard]] double get_staple_coeff(size_t site, int mu, int i_staple) const {
+        return staple_coeff[index_staple_valid(site, mu, i_staple)];
     }
 };
 
