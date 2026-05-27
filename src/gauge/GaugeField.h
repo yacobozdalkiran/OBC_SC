@@ -34,12 +34,12 @@ public:
                 view_link(site, mu) = SU3::Identity();
             }
         }
-        //OBC : we fix U_t(x , y, z, T-1) = 0
+        //OBC : we fix U_t(x , y, z, T-1) = Id
         for (int z=0; z<L; z++){
             for (int y=0; y<L; y++){
                 for (int x=0; x<L; x++){
                     size_t site_tT = geo.index(x,y,z,T-1);
-                    view_link(site_tT, 3) = SU3::Zero();
+                    view_link(site_tT, 3) = SU3::Identity();
                 }
             }
         }
