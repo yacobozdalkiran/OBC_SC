@@ -49,6 +49,10 @@ public:
                                                          int i_link) const {
         return links_staples[index_staples(site, mu, i_staple, i_link)];
     }
+
+    [[nodiscard]] bool is_staple_valid(size_t site, int mu, int i_staple) const {
+        return staple_valid[index_staple_valid(site, mu, i_staple)];
+    }
 };
 
 #endif
