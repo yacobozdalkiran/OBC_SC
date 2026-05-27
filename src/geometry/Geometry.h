@@ -14,6 +14,7 @@ public:
 private:
     std::vector<size_t> neighbors;
     std::vector<std::pair<size_t, int>> links_staples;
+    std::vector<bool> staple_valid;
 
 public:
     explicit Geometry(int T_, int L_);
@@ -31,6 +32,11 @@ public:
     // Index of a link in links_staples
     [[nodiscard]] static size_t index_staples(size_t site, int mu, int i_staple, int i_link) {
         return site * 3 * 6 * 4 + mu * 3 * 6 + i_staple * 3 + i_link;
+    }
+
+    // Index of a staple in staple_valid
+    [[nodiscard]] static size_t index_staple_valid(size_t site, int mu, int i_staple) {
+        return site * 3 * 6 * 4 + mu * 3 * 6 + i_staple;
     }
 
     // Get a neighbor
