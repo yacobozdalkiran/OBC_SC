@@ -27,3 +27,13 @@ add_executable(test_heatbath src/bin/test_heatbath.cpp
 )
 target_link_libraries(test_heatbath PRIVATE Eigen3::Eigen)
 
+add_executable(test_ecmc src/bin/test_ecmc.cpp
+    src/gauge/GaugeField.cpp
+    src/geometry/Geometry.cpp
+    src/geometry/types.h
+    src/su3/utils.cpp
+    src/observables/observables.cpp
+    src/ecmc/ecmc.cpp
+    src/io/params.h
+)
+target_link_libraries(test_ecmc PRIVATE Eigen3::Eigen)
