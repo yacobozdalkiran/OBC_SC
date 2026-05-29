@@ -56,10 +56,26 @@ public:
         return staple_valid[index_staple_valid(site, mu, i_staple)];
     }
 
-    //Return the normalization coefficient of the staple i_staple of link site,mu and 0 if invalid staple
+    // Return the normalization coefficient of the staple i_staple of link site,mu and 0 if invalid staple
     [[nodiscard]] double get_staple_coeff(size_t site, int mu, int i_staple) const {
         return staple_coeff[index_staple_valid(site, mu, i_staple)];
     }
-};
 
-#endif
+    // Optimized structure to store pre-calculated memory offsets for staple links
+    // off0, off1, off2 are the raw indices into the GaugeField::links vector
+    struct OptimizedStaple {
+        size_t off0, off1, off2;
+        double coeff;
+    };
+
+    // Flattened storage for only valid staples to avoid branches during simulation
+    std::vector<OptimizedStaple> fwd_staples_opt;
+    std::vector<OptimizedStaple> bwd_staples_opt;
+
+    // Start index in the *_staples_opt vectors for each link (site * 4 + mu)
+    // The range of staples for a link is [start[i], start[i+1])
+    std::vector<size_t> fwd_start;
+    std::vector<size_t> bwd_start;
+    };
+
+    #endif

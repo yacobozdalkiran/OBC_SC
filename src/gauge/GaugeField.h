@@ -58,6 +58,11 @@ public:
         return Eigen::Map<const SU3>(&links[(site * 4 + mu) * 9]);
     }
 
+    // Const mapping of links by raw offset
+    [[nodiscard]] Eigen::Map<const SU3> view_link_const_off(size_t offset) const {
+        return Eigen::Map<const SU3>(&links[offset]);
+    }
+
     void projection_su3(size_t site, int mu);
     void project_field_su3();
     void compute_staple(const Geometry &geo, size_t site, int mu, SU3 &staple) const; 
