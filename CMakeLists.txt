@@ -16,3 +16,14 @@ add_executable(test_gauge_geo src/bin/test_gauge_geo.cpp
     src/observables/observables.cpp
 )
 target_link_libraries(test_gauge_geo PRIVATE Eigen3::Eigen)
+
+add_executable(test_heatbath src/bin/test_heatbath.cpp
+    src/gauge/GaugeField.cpp
+    src/geometry/Geometry.cpp
+    src/geometry/types.h
+    src/su3/utils.cpp
+    src/observables/observables.cpp
+    src/heatbath/heatbath.cpp
+)
+target_link_libraries(test_heatbath PRIVATE Eigen3::Eigen)
+
