@@ -155,13 +155,14 @@ Geometry::Geometry(int T_, int L_) {
                         (l0.first * 4 + l0.second) * 9,
                         (l1.first * 4 + l1.second) * 9,
                         (l2.first * 4 + l2.second) * 9,
-                        get_staple_coeff(site, mu, j)
+                        get_staple_coeff(site, mu, j),
+                        j
                     });
                     fwd_start[link_idx + 1]++;
-                }
+                    }
 
-                // Backward staple
-                if (is_staple_valid(site, mu, j + 1)) {
+                    // Backward staple
+                    if (is_staple_valid(site, mu, j + 1)) {
                     auto l3 = get_link_staple(site, mu, j + 1, 0);
                     auto l4 = get_link_staple(site, mu, j + 1, 1);
                     auto l5 = get_link_staple(site, mu, j + 1, 2);
@@ -169,7 +170,8 @@ Geometry::Geometry(int T_, int L_) {
                         (l3.first * 4 + l3.second) * 9,
                         (l4.first * 4 + l4.second) * 9,
                         (l5.first * 4 + l5.second) * 9,
-                        get_staple_coeff(site, mu, j + 1)
+                        get_staple_coeff(site, mu, j + 1),
+                        j + 1
                     });
                     bwd_start[link_idx + 1]++;
                 }

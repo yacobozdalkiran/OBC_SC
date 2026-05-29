@@ -66,6 +66,7 @@ public:
     struct OptimizedStaple {
         size_t off0, off1, off2;
         double coeff;
+        int j_local; // Index 0-5 identifying the staple slot
     };
 
     // Flattened storage for only valid staples to avoid branches during simulation
