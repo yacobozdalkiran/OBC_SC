@@ -52,7 +52,7 @@ struct Distributions {
 
 namespace ecmc {
 void compute_list_staples(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                          std::array<SU3, 6>& list_staple);
+                          std::array<SU3, 6>& list_staple, std::array<bool, 6>& mask_staple);
 #pragma omp declare simd
 inline void solve_reject_fast(double A, double B, double& gamma, double& reject, int epsilon) {
     // Utilisation de ternaires pour éviter les sauts (branches)
@@ -92,13 +92,13 @@ inline void solve_reject_fast(double A, double B, double& gamma, double& reject,
 }
 void solve_reject(double A, double B, double& gamma, double& reject, int epsilon);
 void compute_reject_angles(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                           const std::array<SU3, 6>& list_staple, const SU3& R, int epsilon,
-                           const double& beta, std::array<double, 6>& reject_angles,
-                           std::mt19937_64& rng);
+                           const std::array<SU3, 6>& list_staple, const std::array<double, 6>& mask_staple,
+                           const SU3& R, int epsilon, const double& beta,
+                           std::array<double, 6>& reject_angles, std::mt19937_64& rng);
 void compute_reject_angles_fast(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                const std::array<SU3, 6>& list_staple, const SU3& R, int epsilon,
-                                const double& beta, std::array<double, 6>& reject_angles,
-                                std::mt19937_64& rng);
+                                const std::array<SU3, 6>& list_staple, const std::array<double, 6>& mask_staple,
+                                const SU3& R, int epsilon, const double& beta,
+                                std::array<double, 6>& reject_angles, std::mt19937_64& rng);
 size_t selectVariable(const std::array<double, 4>& probas, std::mt19937_64& rng);
 size_t selectVariable_norev(const std::array<double, 3>& probas, std::mt19937_64& rng);
 double compute_ds(const SU3& Pi, const SU3& R_mat);
@@ -116,6 +116,6 @@ void sample_persistant(LocalChainState& state, Distributions& d, GaugeField& fie
                        const Geometry& geo, const ECMCParams& params, std::mt19937_64& rng);
 void sample_persistant_norev(LocalChainState& state, Distributions& d, GaugeField& field,
                              const Geometry& geo, const ECMCParams& params, std::mt19937_64& rng);
-}  // namespace mpi::ecmccb
+}  // namespace ecmc
 
 #endif  // INC_4D_MPI_ECMC_MPI_H

@@ -8,29 +8,26 @@
 
 // Computes the list of the 6 staples around a gauge link
 void ecmc::compute_list_staples(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                std::array<SU3, 6>& list_staple) {
+                                std::array<SU3, 6>& list_staple, std::array<bool, 6>& mask_staples) {
     size_t index = 0;
-    size_t x = site;                        // x
-    size_t xmu = geo.get_neigh(x, mu, up);  // x+mu
-    for (int nu = 0; nu < 4; nu++) {
-        if (nu == mu) {
-            continue;
-        }
-        // Staple forward
-        size_t xnu = geo.get_neigh(x, nu, up);  // x+nu
-        const auto& U0 = field.view_link_const(xmu, nu);
-        const auto& U1 = field.view_link_const(xnu, mu);
-        const auto& U2 = field.view_link_const(x, nu);
-        list_staple[index] = U0 * (U2 * U1).adjoint();
+    size_t link_idx = site*4+mu;
+    mask_staples.fill(false);
+    // Forward staples
+    for (size_t i = geo.fwd_start[link_idx]; i < geo.fwd_start[link_idx + 1]; ++i) {
+        const auto& s = geo.fwd_staples_opt[i];
+        list_staple[s.j_local] = s.coeff * (field.view_link_const_off(s.off0) * 
+                            field.view_link_const_off(s.off1).adjoint() * 
+                            field.view_link_const_off(s.off2).adjoint());
+        mask_staples[s.j_local] = true;
+    }
 
-        // Staple backward
-        size_t xmunu = geo.get_neigh(xmu, nu, down);  // x+mu-nu
-        size_t xmnu = geo.get_neigh(x, nu, down);     // x-nu
-        auto V0 = field.view_link_const(xmunu, nu);
-        auto V1 = field.view_link_const(xmnu, mu);
-        auto V2 = field.view_link_const(xmnu, nu);
-        list_staple[index + 1] = (V1 * V0).adjoint() * V2;
-        index += 2;
+    // Backward staples
+    for (size_t i = geo.bwd_start[link_idx]; i < geo.bwd_start[link_idx + 1]; ++i) {
+        const auto& s = geo.bwd_staples_opt[i];
+        list_staple[s.j_local] += s.coeff * (field.view_link_const_off(s.off0).adjoint() * 
+                            field.view_link_const_off(s.off1).adjoint() * 
+                            field.view_link_const_off(s.off2));
+        mask_staples[s.j_local] = true;
     }
 }
 
