@@ -24,8 +24,9 @@ struct HbParams {
     int N_therm = 100;
 };
 
-struct RunParamsECB {
-    int L= 6;
+struct RunParamsECMC {
+    int T = 8;
+    int L= 4;
     bool cold_start = true;
     int seed = 123;
     ECMCParams ecmc_params{};  // Params of the ECMC for each even/odd update
@@ -33,6 +34,8 @@ struct RunParamsECB {
     int N_samples=10;
     bool topo = true;
     int N_plaquette = 2; //Measure plaquette every N_shift_plaquette_shift
+    int T_min = 0;
+    int T_max = T-1;
     std::string run_name="c";
     std::string run_dir="data";
     int save_each = 2; //save confs/measures/seed each 

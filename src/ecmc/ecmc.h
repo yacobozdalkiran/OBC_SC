@@ -59,7 +59,6 @@ inline void solve_reject_fast(double A, double B, double& gamma, double& reject,
     // Utilisation de ternaires pour éviter les sauts (branches)
     B = (epsilon == -1) ? -B : B;
 
-    // std::hypot est souvent mieux vectorisé par SVML
     double R = std::sqrt(A * A + B * B);
     double invR = 1.0 / R;
     double period = 2.0 * R;
