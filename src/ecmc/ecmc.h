@@ -5,6 +5,7 @@
 #ifndef INC_4D_MPI_ECMC_MPI_H
 #define INC_4D_MPI_ECMC_MPI_H
 
+#include <array>
 #include <random>
 
 #include "../gauge/GaugeField.h"
@@ -52,14 +53,14 @@ struct Distributions {
 
 namespace ecmc {
 void compute_list_staples(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                          std::array<SU3, 6>& list_staple, std::array<bool, 6>& mask_staple);
+                          std::array<SU3, 6>& list_staple, std::array<double, 6>& mask_staple);
 #pragma omp declare simd
 inline void solve_reject_fast(double A, double B, double& gamma, double& reject, int epsilon) {
     // Utilisation de ternaires pour éviter les sauts (branches)
     B = (epsilon == -1) ? -B : B;
 
     // std::hypot est souvent mieux vectorisé par SVML
-    double R = std::hypot(A, B);
+    double R = std::sqrt(A * A + B * B);
     double invR = 1.0 / R;
     double period = 2.0 * R;
 
@@ -91,29 +92,19 @@ inline void solve_reject_fast(double A, double B, double& gamma, double& reject,
     reject = theta + 2.0 * M_PI * discarded_number;
 }
 void solve_reject(double A, double B, double& gamma, double& reject, int epsilon);
-void compute_reject_angles(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                           const std::array<SU3, 6>& list_staple, const std::array<double, 6>& mask_staple,
-                           const SU3& R, int epsilon, const double& beta,
-                           std::array<double, 6>& reject_angles, std::mt19937_64& rng);
-void compute_reject_angles_fast(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                const std::array<SU3, 6>& list_staple, const std::array<double, 6>& mask_staple,
-                                const SU3& R, int epsilon, const double& beta,
-                                std::array<double, 6>& reject_angles, std::mt19937_64& rng);
-size_t selectVariable(const std::array<double, 4>& probas, std::mt19937_64& rng);
+void compute_reject_angles_fast(const GaugeField& field, size_t site, int mu,
+                                const std::array<SU3, 6>& list_staple,
+                                const std::array<double, 6>& mask_staple, const SU3& R, int epsilon,
+                                const double& beta, std::array<double, 6>& reject_angles,
+                                std::mt19937_64& rng);
 size_t selectVariable_norev(const std::array<double, 3>& probas, std::mt19937_64& rng);
 double compute_ds(const SU3& Pi, const SU3& R_mat);
-std::pair<std::pair<size_t, int>, int> lift_improved_fast(const GaugeField& field,
-                                                          const Geometry& geo, size_t site,
-                                                          int mu, int j, SU3& R,
-                                                          std::mt19937_64& rng);
 std::pair<std::pair<size_t, int>, int> lift_improved_fast_norev(const GaugeField& field,
                                                                 const Geometry& geo, size_t site,
                                                                 int mu, int j, SU3& R,
                                                                 std::mt19937_64& rng);
 void update(GaugeField& field, size_t site, int mu, double theta, int epsilon, const SU3& R);
 size_t random_site(const Geometry& geo, std::mt19937_64& rng);
-void sample_persistant(LocalChainState& state, Distributions& d, GaugeField& field,
-                       const Geometry& geo, const ECMCParams& params, std::mt19937_64& rng);
 void sample_persistant_norev(LocalChainState& state, Distributions& d, GaugeField& field,
                              const Geometry& geo, const ECMCParams& params, std::mt19937_64& rng);
 }  // namespace ecmc

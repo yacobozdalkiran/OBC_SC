@@ -4,63 +4,48 @@
 
 #include "ecmc.h"
 
+#include <limits>
+
 #include "../su3/utils.h"
 
 // Computes the list of the 6 staples around a gauge link
 void ecmc::compute_list_staples(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                std::array<SU3, 6>& list_staple, std::array<bool, 6>& mask_staples) {
-    size_t index = 0;
-    size_t link_idx = site*4+mu;
-    mask_staples.fill(false);
+                                std::array<SU3, 6>& list_staple,
+                                std::array<double, 6>& mask_staples) {
+    size_t link_idx = site * 4 + mu;
+    for (auto& staple : list_staple) {
+        staple.setZero();
+    }
+    mask_staples.fill(0.0);
     // Forward staples
     for (size_t i = geo.fwd_start[link_idx]; i < geo.fwd_start[link_idx + 1]; ++i) {
         const auto& s = geo.fwd_staples_opt[i];
-        list_staple[s.j_local] = s.coeff * (field.view_link_const_off(s.off0) * 
-                            field.view_link_const_off(s.off1).adjoint() * 
-                            field.view_link_const_off(s.off2).adjoint());
-        mask_staples[s.j_local] = true;
+        list_staple[s.j_local] = s.coeff * (field.view_link_const_off(s.off0) *
+                                            field.view_link_const_off(s.off1).adjoint() *
+                                            field.view_link_const_off(s.off2).adjoint());
+        mask_staples[s.j_local] = 1.0;
     }
 
     // Backward staples
     for (size_t i = geo.bwd_start[link_idx]; i < geo.bwd_start[link_idx + 1]; ++i) {
         const auto& s = geo.bwd_staples_opt[i];
-        list_staple[s.j_local] += s.coeff * (field.view_link_const_off(s.off0).adjoint() * 
-                            field.view_link_const_off(s.off1).adjoint() * 
-                            field.view_link_const_off(s.off2));
-        mask_staples[s.j_local] = true;
+        list_staple[s.j_local] += s.coeff * (field.view_link_const_off(s.off0).adjoint() *
+                                             field.view_link_const_off(s.off1).adjoint() *
+                                             field.view_link_const_off(s.off2));
+        mask_staples[s.j_local] = 1.0;
     }
 }
 
-// Generates the 6 reject angles for a link
-void ecmc::compute_reject_angles(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                 const std::array<SU3, 6>& list_staple, const SU3& R, int epsilon,
-                                 const double& beta, std::array<double, 6>& reject_angles,
-                                 std::mt19937_64& rng) {
-    static std::uniform_real_distribution<double> unif01_g(0.0, 1.0);
-    SU3 T = R.adjoint() * field.view_link_const(site, mu);
-    const double beta_red = -(beta / 3.0);
-    for (int i = 0; i < 6; i++) {
-        double gamma = -std::log(unif01_g(rng));
-        auto M_row0 = T.row(0) * list_staple[i];
-        auto M_row1 = T.row(1) * list_staple[i];
-        // P(0,0) = M_row0 * R_col0
-        std::complex<double> P00 = M_row0(0) * R(0, 0) + M_row0(1) * R(1, 0) + M_row0(2) * R(2, 0);
-        // P(1,1) = M_row1 * R_col1
-        std::complex<double> P11 = M_row1(0) * R(0, 1) + M_row1(1) * R(1, 1) + M_row1(2) * R(2, 1);
-        double A = (P00.real() + P11.real()) * beta_red;
-        double B = (-P00.imag() + P11.imag()) * beta_red;
-        solve_reject_fast(A, B, gamma, reject_angles[i], epsilon);
-    }
-}
-
-void ecmc::compute_reject_angles_fast(const GaugeField& field, const Geometry& geo, size_t site, int mu,
-                                      const std::array<SU3, 6>& list_staple, const SU3& R,
+void ecmc::compute_reject_angles_fast(const GaugeField& field, size_t site, int mu,
+                                      const std::array<SU3, 6>& list_staple,
+                                      const std::array<double, 6>& mask_staple, const SU3& R,
                                       int epsilon, const double& beta,
                                       std::array<double, 6>& reject_angles, std::mt19937_64& rng) {
     static std::uniform_real_distribution<double> unif01_g(0.0, 1.0);
     const double beta_red = -(beta / 3.0);
     const SU3 T = R.adjoint() * field.view_link_const(site, mu);
-    // 1. Pré-génération des gamma 
+    const double invalid_reject = std::numeric_limits<double>::max();
+    // 1. Pré-génération des gamma
     double gammas[6];
     for (int i = 0; i < 6; ++i) {
         gammas[i] = -std::log(1.0 - unif01_g(rng));
@@ -92,24 +77,17 @@ void ecmc::compute_reject_angles_fast(const GaugeField& field, const Geometry& g
         std::complex<double> P00 = m00 * R(0, 0) + m01 * R(1, 0) + m02 * R(2, 0);
         std::complex<double> P11 = m10 * R(0, 1) + m11 * R(1, 1) + m12 * R(2, 1);
 
-        double A = (P00.real() + P11.real()) * beta_red;
-        double B = (P11.imag() - P00.imag()) * beta_red;
+        const double valid = mask_staple[i];
+        const double invalid = 1.0 - valid;
+        double A = (P00.real() + P11.real()) * beta_red * valid;
+        double B = (P11.imag() - P00.imag()) * beta_red * valid + invalid;
         // Appel de la version inline vectorisée
-        solve_reject_fast(A, B, gammas[i], reject_angles[i], epsilon);
+        double reject = 0.0;
+        solve_reject_fast(A, B, gammas[i], reject, epsilon);
+        reject_angles[i] = valid * reject + invalid * invalid_reject;
     }
 }
 
-// Selects an index between 0 and probas.size()-1 using the tower of probability method
-// static dist to avoid initialization cost
-size_t ecmc::selectVariable(const std::array<double, 4>& probas, std::mt19937_64& rng) {
-    static std::uniform_real_distribution<double> unif01(0.0, 1.0);
-    double r = unif01(rng);
-
-    if (r < probas[0]) return 0;
-    if (r < probas[0] + probas[1]) return 1;
-    if (r < probas[0] + probas[1] + probas[2]) return 2;
-    return 3;
-}
 size_t ecmc::selectVariable_norev(const std::array<double, 3>& probas, std::mt19937_64& rng) {
     static std::uniform_real_distribution<double> unif01(0.0, 1.0);
     double r = unif01(rng);
@@ -181,60 +159,6 @@ std::pair<std::pair<size_t, int>, int> ecmc::lift_improved_fast_norev(const Gaug
     }
     return std::make_pair(geo.get_link_staple(site, mu, j, index_lift), epsilon);
 }
-// Optimized version of lift_improved
-std::pair<std::pair<size_t, int>, int> ecmc::lift_improved_fast(const GaugeField& field,
-                                                                const Geometry& geo, size_t site,
-                                                                int mu, int j, SU3& R,
-                                                                std::mt19937_64& rng) {
-    std::array<std::pair<size_t, int>, 4>
-        links_plaquette_j;  // We add the current link to get the plaquette
-    links_plaquette_j[0] = std::make_pair(site, mu);
-    links_plaquette_j[1] = geo.get_link_staple(site, mu, j, 0);
-    links_plaquette_j[2] = geo.get_link_staple(site, mu, j, 1);
-    links_plaquette_j[3] = geo.get_link_staple(site, mu, j, 2);
-
-    SU3 U0 = field.view_link_const(site, mu);
-    SU3 U1 = field.view_link_const(links_plaquette_j[1].first, links_plaquette_j[1].second);
-    SU3 U2 = field.view_link_const(links_plaquette_j[2].first, links_plaquette_j[2].second);
-    SU3 U3 = field.view_link_const(links_plaquette_j[3].first, links_plaquette_j[3].second);
-    std::array<double, 4> probas{};
-    std::array<double, 4> abs_dS{};
-    double sum = 0.0;
-    std::array<int, 4> sign_dS{};
-    std::array<SU3, 4> P{};
-
-    if (j % 2 == 0) {  // Forward plaquette
-        SU3 U01 = U0 * U1;
-        SU3 U32 = U3 * U2;
-        P[0] = U01 * U32.adjoint();
-        P[1] = U1 * U32.adjoint() * U0;
-        P[2] = U2 * U01.adjoint() * U3;
-        P[3] = P[0].adjoint();
-    } else {                // Backward plaquette
-        SU3 U21 = U2 * U1;  // 1 mult + adjoint
-        SU3 T = U0 * U21.adjoint();
-        P[0] = T * U3;
-        P[1] = U1 * U0.adjoint() * U3.adjoint() * U2;
-        P[3] = U3 * T;
-        P[2] = P[3].adjoint();
-    }
-    for (size_t i = 0; i < 4; i++) {
-        probas[i] = compute_ds(P[i], R);  // Less matmul
-        sign_dS[i] = dsign(probas[i]);
-        probas[i] = abs(probas[i]);
-        abs_dS[i] = probas[i];
-        sum += probas[i];
-    }
-
-    for (size_t i = 0; i < 4; i++) {
-        probas[i] /= sum;
-    }
-
-    size_t index_lift = selectVariable(probas, rng);
-    int new_epsilon = -sign_dS[index_lift];
-    return make_pair(links_plaquette_j[index_lift], new_epsilon);
-}
-
 // Updates the gauge field with XY embedding
 void ecmc::update(GaugeField& field, size_t site, int mu, double theta, int epsilon, const SU3& R) {
     const SU3& Uold = field.view_link_const(site, mu);
@@ -252,147 +176,6 @@ void ecmc::update(GaugeField& field, size_t site, int mu, double theta, int epsi
     field.projection_su3(site, mu);
 }
 
-// Returns a random non frozen site
-size_t ecmc::random_site(const Geometry& geo, std::mt19937_64& rng) {
-    static std::uniform_int_distribution<size_t> random_coord(0, geo.V - 1);
-    return random_coord(rng);
-}
-
-void ecmc::sample_persistant(LocalChainState& state, Distributions& d, GaugeField& field,
-                             const Geometry& geo, const ECMCParams& params,
-                             std::mt19937_64& rng) {
-    // Constantes et Distributions
-    const double beta = params.beta;
-    const bool poisson = params.poisson;
-
-    // Initialisation de l'état de la chaîne si nécessaire
-    if (!state.initialized) {
-        state.site = random_site(geo, rng);
-        state.mu = d.random_dir(rng);
-        state.epsilon = 2 * d.random_eps(rng) - 1;
-        state.R = random_su3(rng);
-        state.theta_refresh_site =
-            poisson ? d.dist_refresh_site(rng) : params.param_theta_refresh_site;
-        state.theta_refresh_R = poisson ? d.dist_refresh_R(rng) : params.param_theta_refresh_R;
-        state.theta_parcouru_refresh_site = 0.0;
-        state.theta_parcouru_refresh_R = 0.0;
-        state.set_counter = 0;
-        state.event_counter = 0;
-        state.initialized = true;
-    }
-
-    // Initalisation de l'état de la chaîne (persistant)
-    size_t site_current = state.site;
-    int mu_current = state.mu;
-    int epsilon_current = state.epsilon;
-    SU3 R = state.R;
-    size_t set_counter = state.set_counter;
-    size_t event_counter = state.event_counter;
-    size_t lift_counter = state.lift_counter;
-    size_t rev_counter = state.rev_counter;
-
-    // Budget d'angle
-    double theta_sample = poisson ? d.dist_sample(rng) : params.param_theta_sample;
-    double theta_refresh_site = state.theta_refresh_site;
-    double theta_refresh_R = state.theta_refresh_R;
-    double theta_parcouru_sample = 0.0;
-    double theta_parcouru_refresh_site = state.theta_parcouru_refresh_site;
-    double theta_parcouru_refresh_R = state.theta_parcouru_refresh_R;
-
-    // Buffer de matrices (Optimisation : Statique pour éviter l'allocation)
-    // static std::vector<SU3> set_matrices(101);
-    // ecmc_set(params.epsilon_set, set_matrices, rng);
-
-    // Buffers de travail
-    std::array<double, 6> reject_angles;
-    std::array<SU3, 6> list_staple;
-
-    while (true) {
-        compute_list_staples(field, geo, site_current, mu_current, list_staple);
-        compute_reject_angles_fast(field, geo, site_current, mu_current, list_staple, R, epsilon_current,
-                                   beta, reject_angles, rng);
-
-        int j = 0;
-        double theta_reject = reject_angles[0];
-        for (int k = 1; k < 6; ++k) {
-            if (reject_angles[k] < theta_reject) {
-                theta_reject = reject_angles[k];
-                j = k;
-            }
-        }
-
-        // Distances aux frontières
-        double dist_to_sample = theta_sample - theta_parcouru_sample;
-        double dist_to_refresh_site = theta_refresh_site - theta_parcouru_refresh_site;
-        double dist_to_refresh_R = theta_refresh_R - theta_parcouru_refresh_R;
-
-        // Premier événement
-        double theta_step =
-            std::min({theta_reject, dist_to_sample, dist_to_refresh_site, dist_to_refresh_R});
-
-        if (theta_step == dist_to_sample) {
-            // --- EVENT: SAMPLE ---
-            update(field, site_current, mu_current, dist_to_sample, epsilon_current, R);
-            event_counter++;
-            // --- SAUVEGARDE DE L'ÉTAT AVANT LE RETOUR ---
-            state.site = site_current;
-            state.mu = mu_current;
-            state.epsilon = epsilon_current;
-            state.R = R;
-            state.theta_parcouru_refresh_site = theta_parcouru_refresh_site + dist_to_sample;
-            state.theta_parcouru_refresh_R = theta_parcouru_refresh_R + dist_to_sample;
-            state.theta_sample = theta_sample;
-            state.theta_refresh_site = theta_refresh_site;
-            state.theta_refresh_R = theta_refresh_R;
-            state.set_counter = set_counter;
-            state.event_counter = event_counter;
-            state.lift_counter = lift_counter;
-            state.rev_counter = rev_counter;
-            return;
-        } else if (theta_step == dist_to_refresh_site) {
-            // --- EVENT: REFRESH SITE ---
-            update(field, site_current, mu_current, dist_to_refresh_site, epsilon_current, R);
-            event_counter++;
-
-            theta_parcouru_sample += dist_to_refresh_site;
-            theta_parcouru_refresh_R += dist_to_refresh_site;
-            theta_parcouru_refresh_site = 0.0;
-            if (poisson) theta_refresh_site = d.dist_refresh_site(rng);
-
-            site_current = random_site(geo, rng);
-            mu_current = d.random_dir(rng);
-            epsilon_current = 2 * d.random_eps(rng) - 1;
-        } else if (theta_step == dist_to_refresh_R) {
-            // --- EVENT: REFRESH R ---
-            update(field, site_current, mu_current, dist_to_refresh_R, epsilon_current, R);
-            event_counter++;
-
-            theta_parcouru_sample += dist_to_refresh_R;
-            theta_parcouru_refresh_site += dist_to_refresh_R;
-            theta_parcouru_refresh_R = 0.0;
-            if (poisson) theta_refresh_R = d.dist_refresh_R(rng);
-
-            R = random_su3(rng);
-        } else {
-            // --- EVENT: LIFT ---
-            update(field, site_current, mu_current, theta_reject, epsilon_current, R);
-            event_counter++;
-
-            theta_parcouru_sample += theta_reject;
-            theta_parcouru_refresh_site += theta_reject;
-            theta_parcouru_refresh_R += theta_reject;
-
-            auto l = lift_improved_fast(field, geo, site_current, mu_current, j, R, rng);
-            set_counter++;
-            lift_counter++;
-            rev_counter += (l.first.first == site_current and l.first.second == mu_current) ? 1 : 0;
-            site_current = l.first.first;
-            mu_current = l.first.second;
-            epsilon_current = l.second;
-        }
-    }
-}
-
 void ecmc::sample_persistant_norev(LocalChainState& state, Distributions& d, GaugeField& field,
                                    const Geometry& geo, const ECMCParams& params,
                                    std::mt19937_64& rng) {
@@ -400,10 +183,25 @@ void ecmc::sample_persistant_norev(LocalChainState& state, Distributions& d, Gau
     const double beta = params.beta;
     const bool poisson = params.poisson;
 
+    static std::uniform_int_distribution<int> random_spatial(0, geo.L - 1);
+    static std::uniform_int_distribution<int> random_temp(0, geo.T - 1);
+
     // Initialisation de l'état de la chaîne si nécessaire
     if (!state.initialized) {
-        state.site = random_site(geo, rng);
-        state.mu = d.random_dir(rng);
+        int x_site = random_spatial(rng);
+        int y_site = random_spatial(rng);
+        int z_site = random_spatial(rng);
+        int t_site = random_temp(rng);
+        int mu_link = d.random_dir(rng);
+        while (t_site == geo.T - 1 && mu_link == 3) {
+            x_site = random_spatial(rng);
+            y_site = random_spatial(rng);
+            z_site = random_spatial(rng);
+            t_site = random_temp(rng);
+            mu_link = d.random_dir(rng);
+        }
+        state.site = geo.index(x_site, y_site, z_site, t_site);
+        state.mu = mu_link;
         state.epsilon = 2 * d.random_eps(rng) - 1;
         state.R = random_su3(rng);
         state.theta_refresh_site =
@@ -437,11 +235,12 @@ void ecmc::sample_persistant_norev(LocalChainState& state, Distributions& d, Gau
     // Buffers de travail
     std::array<double, 6> reject_angles;
     std::array<SU3, 6> list_staple;
+    std::array<double, 6> mask_staple;
 
     while (true) {
-        compute_list_staples(field, geo, site_current, mu_current, list_staple);
-        compute_reject_angles_fast(field, geo, site_current, mu_current, list_staple, R, epsilon_current,
-                                   beta, reject_angles, rng);
+        compute_list_staples(field, geo, site_current, mu_current, list_staple, mask_staple);
+        compute_reject_angles_fast(field, site_current, mu_current, list_staple, mask_staple, R,
+                                   epsilon_current, beta, reject_angles, rng);
 
         int j = 0;
         double theta_reject = reject_angles[0];
@@ -490,8 +289,22 @@ void ecmc::sample_persistant_norev(LocalChainState& state, Distributions& d, Gau
             theta_parcouru_refresh_site = 0.0;
             if (poisson) theta_refresh_site = d.dist_refresh_site(rng);
 
-            site_current = random_site(geo, rng);
-            mu_current = d.random_dir(rng);
+            // Safety OBC : no refresh to a forbidden link
+            int x_site = random_spatial(rng);
+            int y_site = random_spatial(rng);
+            int z_site = random_spatial(rng);
+            int t_site = random_temp(rng);
+            int mu_link = d.random_dir(rng);
+            while (t_site == geo.T - 1 && mu_link == 3) {
+                x_site = random_spatial(rng);
+                y_site = random_spatial(rng);
+                z_site = random_spatial(rng);
+                t_site = random_temp(rng);
+                mu_link = d.random_dir(rng);
+            }
+
+            site_current = geo.index(x_site, y_site, z_site, t_site);
+            mu_current = mu_link;
             epsilon_current = 2 * d.random_eps(rng) - 1;
         } else if (theta_step == dist_to_refresh_R) {
             // --- EVENT: REFRESH R ---
