@@ -1,0 +1,21 @@
+T=8
+L=4
+cold_start=true
+seed=123
+
+N_therm = 10
+N_samples = 300
+N_plaquette = 5
+T_min = 2
+T_max = 5
+
+beta = 6.0
+param_theta_sample=600
+param_theta_refresh_site=300
+param_theta_refresh_R = 300
+poisson=false
+
+run_name = test
+run_dir= data
+save_each = 500
+
