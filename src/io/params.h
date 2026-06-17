@@ -10,8 +10,7 @@ struct ECMCParams {
     double beta = 6.0;
     int N_samples = 10;
     double param_theta_sample = 100;
-    double param_theta_refresh_site = 50;
-    double param_theta_refresh_R= 15;
+    double param_theta_refresh= 50;
     bool poisson = false;
     double epsilon_set = 0.15;
 };
@@ -30,7 +29,6 @@ struct RunParamsECMC {
     bool cold_start = true;
     int seed = 123;
     ECMCParams ecmc_params{};  // Params of the ECMC for each even/odd update
-    int N_therm = 100;     //Number of thermalisation shifts
     int N_samples=10;
     bool topo = true;
     int N_plaquette = 2; //Measure plaquette every N_shift_plaquette_shift
@@ -42,14 +40,16 @@ struct RunParamsECMC {
 };
 
 struct RunParamsHbCB {
+    int T = 8;
     int L= 6;
     bool cold_start = true;
     int seed = 123;
     HbParams hp{};  // Hb params for each even/odd update
-    int N_therm = 100;     //Number of thermalisation shifts
     int N_samples=10;
     bool topo = true;
     int N_plaquette = 2; //Measure plaquette every N_shift_plaquette_shift
+    int T_min = 0;
+    int T_max = T-1;
     std::string run_name="c";
     std::string run_dir="data";
     int save_each = 2; //save confs/measures/seed each 

@@ -201,8 +201,7 @@ void io::save_state(const LocalChainState& state, const std::string& filename,
 
     // Scalaires
     ofs << state.site << " " << state.mu << " " << state.epsilon << " "
-        << state.theta_parcouru_refresh_site << " " << state.theta_parcouru_refresh_R << " "
-        << state.theta_refresh_site << " " << state.theta_refresh_R << " " << state.set_counter
+        << state.theta_parcouru_refresh << " " << state.theta_refresh << " " << state.set_counter
         << " " << state.lift_counter << " " << state.rev_counter << " " << state.initialized
         << "\n";
 
@@ -218,6 +217,43 @@ void io::save_state(const LocalChainState& state, const std::string& filename,
 
     ofs.close();
     std::cout << "ECMC Chain saved in : " << full_path << std::endl;
+}
+
+void io::save_sweep_nb(int sweep_nb, const std::string& filename, const std::string& dirpath) {
+    fs::path base_dir(dirpath);
+    fs::path dir = base_dir / filename;
+
+    try {
+        if (!fs::exists(dir)) {
+            fs::create_directories(dir);
+        }
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "Couldn't create folder data : " << e.what() << std::endl;
+        return;
+    }
+    fs::path filepath = dir / (filename + "_checkpoint.txt");
+
+    std::ofstream file(filepath, std::ios::out);
+    if (!file.is_open()) {
+        std::cout << "Could not open file " << filepath << "\n";
+        return;
+    }
+
+    file << sweep_nb;
+    file.close();
+}
+
+void io::load_sweep_nb(int& sweep_nb, const std::string& filename, const std::string& dirpath) {
+    fs::path full_path = fs::path(dirpath) / filename / (filename + "_checkpoint.txt");
+    std::ifstream file(full_path);
+
+    if (!file.is_open()) {
+        throw std::runtime_error("Erreur : Impossible d'ouvrir le fichier " + full_path.string());
+    }
+
+    // Lecture de l'entier
+    file >> sweep_nb;
+    file.close();
 }
 
 // Loads the local chain state of each core
@@ -236,9 +272,9 @@ void io::load_state(LocalChainState& state, const std::string& filename,
     }
 
     // 3. Lecture des scalaires
-    ifs >> state.site >> state.mu >> state.epsilon >> state.theta_parcouru_refresh_site >>
-        state.theta_parcouru_refresh_R >> state.theta_refresh_site >> state.theta_refresh_R >>
-        state.set_counter >> state.lift_counter >> state.rev_counter >> state.initialized;
+    ifs >> state.site >> state.mu >> state.epsilon >> state.theta_parcouru_refresh >>
+        state.theta_refresh >> state.set_counter >> state.lift_counter >> state.rev_counter >>
+        state.initialized;
 
     // 4. Lecture de la matrice SU3 R
     for (int i = 0; i < 3; ++i) {
@@ -287,7 +323,6 @@ void io::save_params(const RunParamsHbCB& rp, const std::string& filename,
 
     file << "# Run params\n";
     file << "seed=" << rp.seed << "\n";
-    file << "N_shift_therm = " << rp.N_therm << "\n";
     file << "N_samples=" << rp.N_samples << "\n";
 
     file << "# Heatbath params\n";
@@ -296,7 +331,9 @@ void io::save_params(const RunParamsHbCB& rp, const std::string& filename,
     file << "N_hits = " << rp.hp.N_hits << "\n\n";
 
     file << "# Plaquette params\n";
-    file << "N_plaquette= " << rp.N_plaquette << "\n\n";
+    file << "N_plaquette= " << rp.N_plaquette << "\n";
+    file << "T_min = " << rp.T_min << "\n";
+    file << "T_max = " << rp.T_max << "\n\n";
 
     file << "#Save params\n";
     file << "save_each = " << rp.save_each << "\n\n";
@@ -345,18 +382,14 @@ void io::load_params(const std::string& filename, RunParamsECMC& rp) {
     rp.ecmc_params.N_samples = 1;
     if (config.count("param_theta_sample"))
         rp.ecmc_params.param_theta_sample = std::stod(config["param_theta_sample"]);
-    if (config.count("param_theta_refresh_site"))
-        rp.ecmc_params.param_theta_refresh_site = std::stod(config["param_theta_refresh_site"]);
-    if (config.count("param_theta_refresh_R"))
-        rp.ecmc_params.param_theta_refresh_R = std::stod(config["param_theta_refresh_R"]);
+    if (config.count("param_theta_refresh"))
+        rp.ecmc_params.param_theta_refresh = std::stod(config["param_theta_refresh"]);
     if (config.count("poisson")) rp.ecmc_params.poisson = (config["poisson"] == "true");
     if (config.count("epsilon_set")) rp.ecmc_params.epsilon_set = std::stod(config["epsilon_set"]);
-
+    // Plaquette
     if (config.count("N_plaquette")) rp.N_plaquette = std::stoi(config["N_plaquette"]);
     if (config.count("T_min")) rp.T_min = std::stoi(config["T_min"]);
     if (config.count("T_max")) rp.T_max = std::stoi(config["T_max"]);
-    // Run and topo params
-    if (config.count("N_therm")) rp.N_therm = std::stoi(config["N_therm"]);
     // Run name
     if (config.count("run_name")) rp.run_name = config["run_name"];
     if (config.count("run_dir")) rp.run_dir = config["run_dir"];
@@ -395,10 +428,10 @@ void io::load_params(const std::string& filename, RunParamsHbCB& rp) {
     if (config.count("N_sweeps")) rp.hp.N_sweeps = std::stoi(config["N_sweeps"]);
     if (config.count("N_hits")) rp.hp.N_hits = std::stoi(config["N_hits"]);
     if (config.count("N_plaquette")) rp.N_plaquette = std::stoi(config["N_plaquette"]);
-
-    // Run and topo params
-    if (config.count("N_therm")) rp.N_therm = std::stoi(config["N_therm"]);
-
+    // Plaquette
+    if (config.count("N_plaquette")) rp.N_plaquette = std::stoi(config["N_plaquette"]);
+    if (config.count("T_min")) rp.T_min = std::stoi(config["T_min"]);
+    if (config.count("T_max")) rp.T_max = std::stoi(config["T_max"]);
     // Run name
     if (config.count("run_name")) rp.run_name = config["run_name"];
     if (config.count("run_dir")) rp.run_dir = config["run_dir"];
@@ -416,7 +449,6 @@ void print_parameters(const RunParamsHbCB& rp) {
 
     std::cout << "---Run params---\n";
     std::cout << "Initial seed : " << rp.seed << "\n";
-    std::cout << "Thermalization samples : " << rp.N_therm << "\n";
     std::cout << "Number of samples : " << rp.N_samples << "\n";
     std::cout << "Save each : " << rp.save_each << " samples \n\n";
 
@@ -427,7 +459,8 @@ void print_parameters(const RunParamsHbCB& rp) {
 
     std::cout << "---Measures params---\n";
     std::cout << "Number of <P> samples : " << rp.N_samples / rp.N_plaquette << "\n";
-    std::cout << "Measure <P> each : " << rp.N_plaquette << " samples\n";
+    std::cout << "Measure <P> each : " << rp.N_plaquette << " shifts\n";
+    std::cout << "T_min = " << rp.T_min << ", T_max = " << rp.T_max << "\n";
     std::cout << "==========================================" << std::endl;
 }
 
@@ -474,15 +507,13 @@ void print_parameters(const RunParamsECMC& rp) {
 
     std::cout << "---Run params---\n";
     std::cout << "Initial seed : " << rp.seed << "\n";
-    std::cout << "Thermalization samples : " << rp.N_therm << "\n";
     std::cout << "Number of samples : " << rp.N_samples << "\n";
     std::cout << "Save each : " << rp.save_each << " samples\n\n";
 
     std::cout << "---ECMC params---\n";
     std::cout << "Beta : " << rp.ecmc_params.beta << "\n";
     std::cout << "Theta sample : " << rp.ecmc_params.param_theta_sample << "\n";
-    std::cout << "Theta refresh site : " << rp.ecmc_params.param_theta_refresh_site << "\n";
-    std::cout << "Theta refresh R : " << rp.ecmc_params.param_theta_refresh_R << "\n";
+    std::cout << "Theta refresh : " << rp.ecmc_params.param_theta_refresh<< "\n";
     std::cout << "Epsilon set : " << rp.ecmc_params.epsilon_set << "\n";
     std::cout << "Poisson law : " << (rp.ecmc_params.poisson ? "Yes" : "No") << "\n\n";
 
@@ -525,14 +556,12 @@ void io::save_params(const RunParamsECMC& rp, const std::string& filename,
 
     file << "# Run params\n";
     file << "seed = " << rp.seed << "\n";
-    file << "N_shift_therm = " << rp.N_therm << "\n";
     file << "N_samples= " << rp.N_samples << "\n";
 
     file << "# ECMC params\n";
     file << "beta = " << rp.ecmc_params.beta << "\n";
     file << "theta_sample = " << rp.ecmc_params.param_theta_sample << "\n";
-    file << "theta_refresh_site = " << rp.ecmc_params.param_theta_refresh_site << "\n";
-    file << "theta_refresh_R = " << rp.ecmc_params.param_theta_refresh_R << "\n";
+    file << "theta_refresh= " << rp.ecmc_params.param_theta_refresh << "\n";
     file << "epsilon_set = " << rp.ecmc_params.epsilon_set << "\n";
     file << "poisson = " << rp.ecmc_params.poisson << "\n\n";
 

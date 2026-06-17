@@ -25,6 +25,8 @@ void add_shift(int shift, const std::string& filename, const std::string& dirpat
 void add_finished(const std::string& filename, const std::string& dirpath);
 void save_state(const LocalChainState& state, const std::string& filename,
                 const std::string& dirpath);
+void save_sweep_nb(int sweep_nb, const std::string& filename, const std::string& dirpath);
+void load_sweep_nb(int& sweep_nb, const std::string& filename, const std::string& dirpath);
 // Input
 std::string trim(const std::string& s);
 void load_params(const std::string& filename, RunParamsECMC& rp);

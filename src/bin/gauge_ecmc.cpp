@@ -28,10 +28,11 @@ void generate_ecmc_cb(const RunParamsECMC& rp, bool existing) {
     // Chain state
     LocalChainState state{};
     Distributions d(rp.ecmc_params);
-
+    int start = 0;
     if (existing) {
         read_ildg(field, geo, rp.run_name, rp.run_dir);
         io::load_state(state, rp.run_name, rp.run_dir);
+        io::load_sweep_nb(start, rp.run_name, rp.run_dir);
 
         fs::path state_path = fs::path(rp.run_dir) / rp.run_name / (rp.run_name + "_seed") /
                               (rp.run_name + "_seed.txt");
@@ -65,40 +66,20 @@ void generate_ecmc_cb(const RunParamsECMC& rp, bool existing) {
     // Print params
     print_parameters(rp);
 
-    //==============================ECMC Checkboard===========================
-    // Thermalisation
-    // Skipped if existing (for successive jobs in slurm)
-
-    if (!existing) {
-        std::cout << "\n\n===========================================\n";
-        std::cout << "Thermalisation : " << rp.N_therm << " configurations \n";
-        std::cout << "===========================================\n";
-
-        for (int i = 0; i < rp.N_therm; i++) {
-            ecmc::sample_persistant_norev(state, d, field, geo, ep, rng);
-
-            // Plaquette measure (not saved for thermalization)
-            if (i % rp.N_plaquette == 0) {
-                double p = mean_plaquette_weighted(field, geo, rp.T_min, rp.T_max);
-                std::cout << "\n====== Configuration " << i << " ======\n";
-                std::cout << "(Therm) Sample " << i / rp.N_plaquette << ", <P> = " << p << "\n";
-            }
-        }
-    }
-
+    //==============================ECMC===========================
     // Sampling
     std::cout << "\n\n===========================================\n";
     std::cout << "Sampling : " << rp.N_samples / rp.N_plaquette << " <P> samples\n "
               << "===========================================\n";
 
-    for (int i = 0; i < rp.N_samples; i++) {
+    for (int i = start; i < start + rp.N_samples; i++) {
+        std::cout << "\n====== Configuration " << i << " ======\n";
         ecmc::sample_persistant_norev(state, d, field, geo, ep, rng);
 
         // Plaquette measure
         if ((i % rp.N_plaquette == 0) and (i > 0 or !existing)) {
             double p = mean_plaquette_weighted(field, geo, rp.T_min, rp.T_max);
-            std::cout << "\n====== Configuration " << i << " ======\n";
-            std::cout << "Sample " << i / rp.N_plaquette << ", <P> = " << p << "\n";
+            std::cout << "Sample " << i / rp.N_plaquette << ", <P> = " << p << "\nT_min, T_max = " << rp.T_min <<", " << rp.T_max <<  "\n";
             plaquette.emplace_back(p);
             unsigned long local_lifts = state.lift_counter;
             unsigned long local_events = state.event_counter;
@@ -127,6 +108,7 @@ void generate_ecmc_cb(const RunParamsECMC& rp, bool existing) {
             io::save_plaquette(plaquette, rp.run_name, rp.run_dir, precision);
             io::add_shift(i, rp.run_name, rp.run_dir);
             io::save_event_nb(event_nb, lift_nb, rev_nb, lambda, rp.run_name, rp.run_dir);
+            io::save_sweep_nb(i, rp.run_name, rp.run_dir);
             // Save conf
             save_ildg(field, geo, rp.run_name, rp.run_dir);
             // Save seeds
@@ -156,6 +138,7 @@ void generate_ecmc_cb(const RunParamsECMC& rp, bool existing) {
     int precision = 10;
     io::save_plaquette(plaquette, rp.run_name, rp.run_dir, precision);
     io::add_shift(rp.N_samples, rp.run_name, rp.run_dir);
+    io::save_sweep_nb(start + rp.N_samples, rp.run_name, rp.run_dir);
     io::add_finished(rp.run_name, rp.run_dir);
     io::save_event_nb(event_nb, lift_nb, rev_nb, lambda, rp.run_name, rp.run_dir);
     // Save conf

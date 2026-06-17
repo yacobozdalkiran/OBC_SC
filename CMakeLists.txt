@@ -91,7 +91,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
 else()
     target_compile_options(test_ecmc PRIVATE
             -O3
-            -ffast-math
+            #-flto
+            #-ffast-math
             -march=native
             -Wall -Wextra -Wpedantic
     )
@@ -120,7 +121,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
 else()
     target_compile_options(gauge_ecmc PRIVATE
             -O3
-            -ffast-math
+            #-ffast-math
             -fopenmp
             -march=native
             -Wall -Wextra -Wpedantic

@@ -20,12 +20,10 @@ struct LocalChainState {
     bool initialized = false;
 
     // Budgets de Poisson persistants
-    double theta_parcouru_refresh_site = 0.0;
-    double theta_parcouru_refresh_R = 0.0;
+    double theta_parcouru_refresh = 0.0;
     // Budgets de Poisson persistants
     double theta_sample = 0.0;
-    double theta_refresh_site = 0.0;
-    double theta_refresh_R = 0.0;
+    double theta_refresh= 0.0;
     // Compteur pour le set de matrices
     size_t set_counter;
     // Compteur de lifts
@@ -39,15 +37,13 @@ struct Distributions {
     std::uniform_int_distribution<int> random_dir;
     std::uniform_int_distribution<int> random_eps;
     std::exponential_distribution<double> dist_sample;
-    std::exponential_distribution<double> dist_refresh_site;
-    std::exponential_distribution<double> dist_refresh_R;
+    std::exponential_distribution<double> dist_refresh;
     // Constructeur pour initialiser les taux
     Distributions(const ECMCParams& p)
         : random_dir(0, 3),
           random_eps(0, 1),
           dist_sample(1.0 / p.param_theta_sample),
-          dist_refresh_site(1.0 / p.param_theta_refresh_site),  // On normalise le taux à 1.0 et on
-          dist_refresh_R(1.0 / p.param_theta_refresh_R)  // On normalise le taux à 1.0 et on divise
+          dist_refresh(1.0 / p.param_theta_refresh)
     {};
 };
 

@@ -49,7 +49,7 @@ int main() {
     ECMCParams params{.beta = beta,
                       .N_samples = n_sweeps,
                       .param_theta_sample = 600,
-                      .param_theta_refresh_R = 200,
+                      .param_theta_refresh= 200,
                       .poisson = false,
                       .epsilon_set = 0.15};
     LocalChainState state{};
