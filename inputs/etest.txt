@@ -1,12 +1,12 @@
-T=8
+T=10
 L=4
 cold_start=true
 seed=123
 
 N_samples = 300
 N_plaquette = 1
-T_min = 2
-T_max = 5
+T_min = 3
+T_max = 6
 
 beta = 6.0
 param_theta_sample=600

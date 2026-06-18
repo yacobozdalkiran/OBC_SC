@@ -74,12 +74,21 @@ void generate_ecmc_cb(const RunParamsECMC& rp, bool existing) {
 
     for (int i = start; i < start + rp.N_samples; i++) {
         std::cout << "\n====== Configuration " << i << " ======\n";
+        auto start_sweep = std::chrono::high_resolution_clock::now();
         ecmc::sample_persistant_norev(state, d, field, geo, ep, rng);
+        auto end_sweep = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> sweep_time = end_sweep - start_sweep;
+        std::cout << "Sweep time : " << sweep_time << "\n";
 
         // Plaquette measure
         if ((i % rp.N_plaquette == 0) and (i > 0 or !existing)) {
+            auto start_plaquette = std::chrono::high_resolution_clock::now();
             double p = mean_plaquette_weighted(field, geo, rp.T_min, rp.T_max);
-            std::cout << "Sample " << i / rp.N_plaquette << ", <P> = " << p << "\nT_min, T_max = " << rp.T_min <<", " << rp.T_max <<  "\n";
+            auto end_plaquette = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> plaquette_time = end_plaquette - start_plaquette;
+            std::cout << "Plaquette time : " << plaquette_time << "\n";
+            std::cout << "Sample " << i / rp.N_plaquette << ", <P> = " << p
+                      << "\nT_min, T_max = " << rp.T_min << ", " << rp.T_max << "\n";
             plaquette.emplace_back(p);
             unsigned long local_lifts = state.lift_counter;
             unsigned long local_events = state.event_counter;

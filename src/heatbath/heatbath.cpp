@@ -80,6 +80,7 @@ void heatbath::sweep(GaugeField& field, const Geometry& geo, double beta, int N_
                     size_t site = geo.index(x, y, z, t);
                     for (int mu = 0; mu < 4; mu++) {
                         for (int h = 0; h < N_hits; h++) {
+                            if (t==geo.T-1 and mu==3) continue;
                             hit(field, geo, site, mu, beta, A, rng);
                         }
                     }

@@ -8,7 +8,7 @@
 
 #include "../su3/utils.h"
 
-// Computes the list of the 6 staples around a gauge link
+// Computes the list of the valid staples around a gauge link
 void ecmc::compute_list_staples(const GaugeField& field, const Geometry& geo, size_t site, int mu,
                                 std::array<SU3, 6>& list_staple,
                                 std::array<double, 6>& mask_staples) {
@@ -97,18 +97,6 @@ size_t ecmc::selectVariable_norev(const std::array<double, 3>& probas, std::mt19
 }
 
 // Optimised computation of ImTr(lambda_3*R_mat.adjoint()*Pi*R_mat)
-double ecmc::compute_ds(const SU3& Pi, const SU3& R_mat) {
-    // Calcule Im( (R.adj * Pi * R)_00 - (R.adj * Pi * R)_11 )
-    // On ne calcule que les colonnes 0 et 1 de (Pi * R)
-    // Puis le produit scalaire avec les lignes de R.adjoint
-    SU3 M = Pi * R_mat;
-    Complex res = 0;
-    for (int k = 0; k < 3; ++k) {
-        res += std::conj(R_mat(k, 0)) * M(k, 0);
-        res -= std::conj(R_mat(k, 1)) * M(k, 1);
-    }
-    return res.imag();
-};
 
 std::pair<std::pair<size_t, int>, int> ecmc::lift_improved_fast_norev(const GaugeField& field,
                                                                       const Geometry& geo,

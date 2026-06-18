@@ -93,7 +93,6 @@ void compute_reject_angles_fast(const GaugeField& field, size_t site, int mu,
                                 const double& beta, std::array<double, 6>& reject_angles,
                                 std::mt19937_64& rng);
 size_t selectVariable_norev(const std::array<double, 3>& probas, std::mt19937_64& rng);
-double compute_ds(const SU3& Pi, const SU3& R_mat);
 std::pair<std::pair<size_t, int>, int> lift_improved_fast_norev(const GaugeField& field,
                                                                 const Geometry& geo, size_t site,
                                                                 int mu, int j, SU3& R,
